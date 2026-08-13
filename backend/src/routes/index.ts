@@ -1,0 +1,37 @@
+import { Router } from "express";
+import { successResponse } from "../utils/api-response.js";
+import { authRoutes } from "../modules/auth/auth.routes.js";
+import { storeRoutes } from "../modules/stores/store.routes.js";
+import { productRoutes } from "../modules/products/product.routes.js";
+import { categoryRoutes } from "../modules/categories/category.routes.js";
+import { orderRoutes } from "../modules/orders/order.routes.js";
+import { customerRoutes } from "../modules/customers/customer.routes.js";
+import { couponRoutes } from "../modules/coupons/coupon.routes.js";
+import { themeRoutes } from "../modules/themes/theme.routes.js";
+import { marketingRoutes } from "../modules/marketing/marketing.routes.js";
+import { settingsRoutes } from "../modules/settings/settings.routes.js";
+import { homepageRoutes } from "../modules/homepage/homepage.routes.js";
+import { analyticsRoutes } from "../modules/analytics/analytics.routes.js";
+import { staffRoutes } from "../modules/staff/staff.routes.js";
+import { publicRoutes } from "../modules/public/public.routes.js";
+import { asyncHandler } from "../utils/async-handler.js";
+import { getProductBySlug } from "../modules/products/product.controller.js";
+
+export const routes = Router();
+
+routes.get("/health", (_req, res) => successResponse(res, "API is healthy", { uptime: process.uptime() }));
+routes.use("/auth", authRoutes);
+routes.use("/stores", storeRoutes);
+routes.get("/stores/:storeSlug/products/slug/:slug", asyncHandler(getProductBySlug));
+routes.use("/stores/:storeId/products", productRoutes);
+routes.use("/stores/:storeId/categories", categoryRoutes);
+routes.use("/stores/:storeId/orders", orderRoutes);
+routes.use("/stores/:storeId/customers", customerRoutes);
+routes.use("/stores/:storeId/coupons", couponRoutes);
+routes.use("/stores/:storeId/theme", themeRoutes);
+routes.use("/stores/:storeId/marketing", marketingRoutes);
+routes.use("/stores/:storeId/settings", settingsRoutes);
+routes.use("/stores/:storeId/homepage", homepageRoutes);
+routes.use("/stores/:storeId/analytics", analyticsRoutes);
+routes.use("/stores/:storeId/staff", staffRoutes);
+routes.use("/public", publicRoutes);

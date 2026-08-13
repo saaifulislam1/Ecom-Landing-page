@@ -1,0 +1,25 @@
+import { Router } from "express";
+import { validate } from "../../middleware/validate.middleware.js";
+import { optionalCustomerAuthMiddleware } from "../../middleware/customer-auth.middleware.js";
+import { asyncHandler } from "../../utils/async-handler.js";
+import { couponValidateSchema } from "../coupons/coupon.validation.js";
+import { customerAuthRoutes } from "../customer-auth/customer-auth.routes.js";
+import { orderCreateSchema } from "../orders/order.validation.js";
+import * as controller from "./public.controller.js";
+
+export const publicRoutes = Router();
+publicRoutes.get("/stores/:slug", asyncHandler(controller.getStore));
+publicRoutes.get("/stores/:slug/products", asyncHandler(controller.getProducts));
+publicRoutes.get("/stores/:slug/products/:productSlug", asyncHandler(controller.getProduct));
+publicRoutes.get("/stores/:slug/categories", asyncHandler(controller.getCategories));
+publicRoutes.get("/stores/:slug/theme", asyncHandler(controller.getTheme));
+publicRoutes.get("/stores/:slug/settings", asyncHandler(controller.getSettings));
+publicRoutes.get("/stores/:slug/homepage", asyncHandler(controller.getHomepage));
+publicRoutes.get("/stores/:slug/marketing", asyncHandler(controller.getMarketing));
+publicRoutes.use("/stores/:slug/customer-auth", customerAuthRoutes);
+publicRoutes.post("/stores/:slug/orders", optionalCustomerAuthMiddleware, validate({ body: orderCreateSchema }), asyncHandler(controller.createPublicOrder));
+publicRoutes.get("/stores/:slug/orders/track/:identifier", asyncHandler(controller.trackPublicOrder));
+publicRoutes.get("/stores/:slug/orders/:orderNumber", asyncHandler(controller.getPublicOrder));
+publicRoutes.post("/stores/:slug/coupons/validate", validate({ body: couponValidateSchema }), asyncHandler(controller.validatePublicCoupon));
+publicRoutes.get("/stores/:slug/meta-product-feed.xml", asyncHandler(controller.metaFeedXml));
+publicRoutes.get("/stores/:slug/meta-product-feed.csv", asyncHandler(controller.metaFeedCsv));
