@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiRefreshCw, FiSave } from "react-icons/fi";
-import { BackendMarketingSettings, BackendOrder, BackendProduct, updateAdminMarketingSettings } from "@/lib/api";
+import { API_URL, STORE_SLUG, BackendMarketingSettings, BackendOrder, BackendProduct, updateAdminMarketingSettings } from "@/lib/api";
 import { formatCurrency } from "@/lib/format";
 import { AdminButton } from "@/components/admin/ui/AdminButton";
 import { CopyButton } from "@/components/admin/ui/CopyButton";
@@ -31,7 +31,7 @@ export function MarketingAdminClient({ products, orders, settings }: { products:
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const campaignRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-  const feedUrl = `http://localhost:5001/api/v1/public/stores/demo-fashion-store/meta-product-feed.xml`;
+  const feedUrl = `${API_URL}/public/stores/${STORE_SLUG}/meta-product-feed.xml`;
 
   async function saveMarketing() {
     setMessage("");

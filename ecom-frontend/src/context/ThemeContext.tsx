@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { API_URL, STORE_SLUG } from "@/lib/api";
 import { ThemePreset } from "@/types";
 
 type ThemeContextValue = {
@@ -8,8 +9,6 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001/api/v1";
-const STORE_SLUG = process.env.NEXT_PUBLIC_STORE_SLUG ?? "demo-fashion-store";
 
 const defaultTheme: ThemePreset = {
   id: "modern-blue",

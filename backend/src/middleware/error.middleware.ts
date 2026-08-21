@@ -26,6 +26,12 @@ export function errorMiddleware(error: unknown, _req: Request, res: Response, _n
     return errorResponse(res, error.message, error.errors, error.statusCode);
   }
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === "P2002") {
+      return errorResponse(res, "A record with this value already exists", [{ code: error.code, meta: error.meta }], 409);
+    }
+    if (error.code === "P2025") {
+      return errorResponse(res, "Record not found", [{ code: error.code, meta: error.meta }], 404);
+    }
     return errorResponse(res, "Database request failed", [{ code: error.code, meta: error.meta }], 400);
   }
   const message = error instanceof Error ? error.message : "Something went wrong";

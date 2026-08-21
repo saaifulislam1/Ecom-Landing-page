@@ -13,11 +13,12 @@ function signToken(userId: string) {
 }
 
 export async function register(data: { name: string; email: string; password: string; phone?: string; storeName?: string }) {
-  const exists = await prisma.user.findUnique({ where: { email: data.email } });
+  const email = data.email.trim().toLowerCase();
+  const exists = await prisma.user.findUnique({ where: { email } });
   if (exists) throw new AppError("Email is already registered", 409);
   const password = await bcrypt.hash(data.password, 12);
   const user = await prisma.user.create({
-    data: { name: data.name, email: data.email, password, phone: data.phone, role: UserRole.STORE_OWNER },
+    data: { name: data.name, email, password, phone: data.phone, role: UserRole.STORE_OWNER },
   });
   let store = null;
   if (data.storeName) {
@@ -37,7 +38,7 @@ export async function register(data: { name: string; email: string; password: st
 }
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (!user) throw new AppError("Invalid credentials", 401);
   if (user.status !== "ACTIVE") throw new AppError("User account is inactive", 403);
   const valid = await bcrypt.compare(password, user.password);

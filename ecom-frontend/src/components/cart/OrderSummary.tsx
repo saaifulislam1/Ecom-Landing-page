@@ -32,7 +32,7 @@ export function OrderSummary({
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const lastValidatedKey = useRef("");
-  const delivery = deliveryCharge ?? (subtotal > 0 ? 80 : 0);
+  const delivery = deliveryCharge ?? 0;
   const discount = appliedCoupon?.discountAmount ?? 0;
   const total = subtotal + delivery - discount;
 

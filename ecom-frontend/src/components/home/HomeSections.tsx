@@ -16,13 +16,14 @@ import { CategoryCard } from "@/components/product/CategoryCard";
 import { ProductCard } from "@/components/product/ProductCard";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Newsletter } from "@/components/marketing/Newsletter";
-import { HomepageSettings } from "@/lib/api";
+import { BackendStore, HomepageSettings } from "@/lib/api";
 import { Category, Product } from "@/types";
 
 type HomeSectionProps = {
   products: Product[];
   categories: Category[];
   homepage: HomepageSettings | null;
+  store: BackendStore | null;
 };
 
 const defaultHomepage: HomepageSettings = {
@@ -52,6 +53,14 @@ const defaultHomepage: HomepageSettings = {
   bestSellersEyebrow: "Best sellers",
   bestSellersTitle: "Products shoppers are most likely to explore",
   bestSellersDescription: "Highlight proven items, sale products, or manually curated recommendations to increase conversion.",
+  videoGalleryEnabled: false,
+  videoGalleryTitle: "Video Gallery",
+  videoGalleryDescription: "",
+  videoGalleryItems: [],
+  posterGalleryEnabled: false,
+  posterGalleryTitle: "Poster Gallery",
+  posterGalleryDescription: "",
+  posterGalleryItems: [],
   testimonialsEyebrow: "Customer proof",
   testimonialsTitle: "A store experience that feels dependable",
   testimonialsDescription: "Use reviews to reinforce trust before shoppers reach checkout.",
@@ -119,7 +128,7 @@ function fallbackBestSellers(products: Product[]) {
   return (bestSellers.length ? bestSellers : products).slice(0, 4);
 }
 
-export function HomePageSections({ products, categories, homepage }: HomeSectionProps) {
+export function HomePageSections({ products, categories, homepage, store }: HomeSectionProps) {
   const content = homepage ?? defaultHomepage;
   const featured = fallbackFeatured(products);
   const bestSellers = fallbackBestSellers(products);
@@ -134,9 +143,11 @@ export function HomePageSections({ products, categories, homepage }: HomeSection
       <FeaturedProducts products={featured} content={content} />
       <BenefitsSection content={content} />
       <PromoBanner product={bestSellers[0] ?? heroProduct} content={content} />
+      <VideoGallerySection content={content} />
+      <PosterGallerySection content={content} />
       <BestSellingProducts products={bestSellers} content={content} />
       <TestimonialsSection content={content} />
-      <Newsletter content={content} />
+      <Newsletter content={content} supportEmail={store?.email} />
     </>
   );
 }
@@ -311,6 +322,92 @@ function PromoBanner({ product, content }: { product?: Product; content: Homepag
       </div>
     </section>
   );
+}
+
+function VideoGallerySection({ content }: { content: HomepageSettings }) {
+  const videos = content.videoGalleryItems?.filter((item) => item.embedUrl?.trim()) ?? [];
+  if (!content.videoGalleryEnabled || !videos.length) return null;
+
+  return (
+    <section className="bg-[var(--color-surface)] py-16">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <SectionHeading
+          title={content.videoGalleryTitle || "Video Gallery"}
+          description={content.videoGalleryDescription || undefined}
+        />
+        <div className="grid gap-5 md:grid-cols-2">
+          {videos.slice(0, 4).map((video, index) => (
+            <article key={`${video.embedUrl}-${index}`} className="overflow-hidden rounded-lg border border-[var(--color-border)] bg-black shadow-[var(--shadow-card)]">
+              <div className="aspect-video">
+                <iframe
+                  src={toEmbedUrl(video.embedUrl)}
+                  title={video.title || `Video ${index + 1}`}
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="h-full w-full"
+                />
+              </div>
+              {video.title ? <h3 className="bg-[var(--color-surface)] px-4 py-3 text-sm font-bold text-[var(--color-text)]">{video.title}</h3> : null}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PosterGallerySection({ content }: { content: HomepageSettings }) {
+  const posters = content.posterGalleryItems?.filter((item) => item.imageUrl?.trim()) ?? [];
+  if (!content.posterGalleryEnabled || !posters.length) return null;
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+      <SectionHeading
+        title={content.posterGalleryTitle || "Poster Gallery"}
+        description={content.posterGalleryDescription || undefined}
+      />
+      <div className="grid gap-4 lg:grid-cols-2">
+        {posters.slice(0, 4).map((poster, index) => {
+          const image = (
+            <img
+              src={poster.imageUrl}
+              alt={poster.title || `Poster ${index + 1}`}
+              className="h-full w-full object-cover transition duration-300 hover:scale-[1.02]"
+            />
+          );
+          return (
+            <article key={`${poster.imageUrl}-${index}`} className={`${index === 1 ? "lg:row-span-2" : ""} overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-card)]`}>
+              <div className={index === 1 ? "aspect-[4/5] lg:h-full" : "aspect-[16/10]"}>
+                {poster.linkUrl ? (
+                  <a href={poster.linkUrl} target={poster.linkUrl.startsWith("http") ? "_blank" : undefined} rel={poster.linkUrl.startsWith("http") ? "noreferrer" : undefined}>
+                    {image}
+                  </a>
+                ) : image}
+              </div>
+              {poster.title ? <h3 className="px-4 py-3 text-sm font-bold">{poster.title}</h3> : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function toEmbedUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes("youtube.com")) {
+      const id = parsed.searchParams.get("v");
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    if (parsed.hostname === "youtu.be") {
+      return `https://www.youtube.com/embed/${parsed.pathname.replace("/", "")}`;
+    }
+  } catch {
+    return url;
+  }
+  return url;
 }
 
 function BestSellingProducts({ products, content }: { products: Product[]; content: HomepageSettings }) {

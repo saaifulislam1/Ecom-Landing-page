@@ -5,7 +5,7 @@ import { BsMessenger } from "react-icons/bs";
 import { FiCopy } from "react-icons/fi";
 import { Button } from "@/components/ui/Button";
 
-export function SocialShare({ title }: { title: string }) {
+export function SocialShare({ title, messengerLink }: { title: string; messengerLink?: string | null }) {
   const encodedTitle = encodeURIComponent(title);
 
   function openShare(target: "facebook" | "whatsapp") {
@@ -27,10 +27,12 @@ export function SocialShare({ title }: { title: string }) {
         <FaWhatsapp aria-hidden="true" />
         WhatsApp
       </button>
-      <a className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] px-3 py-2 text-sm hover:border-[var(--color-primary)]" href="https://m.me/" target="_blank" rel="noreferrer">
-        <BsMessenger aria-hidden="true" />
-        Messenger
-      </a>
+      {messengerLink ? (
+        <a className="inline-flex items-center gap-2 rounded-md border border-[var(--color-border)] px-3 py-2 text-sm hover:border-[var(--color-primary)]" href={messengerLink} target="_blank" rel="noreferrer">
+          <BsMessenger aria-hidden="true" />
+          Messenger
+        </a>
+      ) : null}
       <Button variant="outline" className="h-10 px-3" onClick={() => navigator.clipboard.writeText(window.location.href)}>
         <FiCopy aria-hidden="true" />
         Copy Link

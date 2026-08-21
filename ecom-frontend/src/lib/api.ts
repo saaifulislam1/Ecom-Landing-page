@@ -1,7 +1,7 @@
 import { Category, Product, ThemePreset } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001/api/v1";
-const STORE_SLUG = process.env.NEXT_PUBLIC_STORE_SLUG ?? "demo-fashion-store";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5001/api/v1";
+export const STORE_SLUG = process.env.NEXT_PUBLIC_STORE_SLUG ?? "demo-fashion-store";
 export const ADMIN_TOKEN_COOKIE = "admin_token";
 
 type ApiResponse<T> = { success: boolean; message: string; data: T; meta?: unknown };
@@ -95,6 +95,14 @@ export type HomepageSettings = {
   bestSellersEyebrow: string;
   bestSellersTitle: string;
   bestSellersDescription: string;
+  videoGalleryEnabled: boolean;
+  videoGalleryTitle?: string | null;
+  videoGalleryDescription?: string | null;
+  videoGalleryItems: HomepageVideoItem[];
+  posterGalleryEnabled: boolean;
+  posterGalleryTitle?: string | null;
+  posterGalleryDescription?: string | null;
+  posterGalleryItems: HomepagePosterItem[];
   testimonialsEyebrow: string;
   testimonialsTitle: string;
   testimonialsDescription: string;
@@ -103,6 +111,18 @@ export type HomepageSettings = {
   newsletterTitle: string;
   newsletterDescription: string;
   newsletterButtonLabel: string;
+};
+
+export type HomepageVideoItem = {
+  title?: string | null;
+  embedUrl: string;
+  posterUrl?: string | null;
+};
+
+export type HomepagePosterItem = {
+  title?: string | null;
+  imageUrl: string;
+  linkUrl?: string | null;
 };
 
 export type HomepageTestimonial = {
@@ -128,6 +148,8 @@ export type BackendProduct = {
   slug: string;
   description: string;
   shortDescription?: string | null;
+  deliveryDetails?: string | null;
+  returnPolicy?: string | null;
   price: number;
   salePrice?: number | null;
   images: string[];
@@ -148,6 +170,8 @@ export type ProductPayload = {
   slug?: string;
   description: string;
   shortDescription?: string;
+  deliveryDetails?: string;
+  returnPolicy?: string;
   price: number;
   salePrice?: number;
   sku?: string;
@@ -378,11 +402,16 @@ export async function getTheme(): Promise<ThemePreset | null> {
 }
 
 export async function getHomepageSettings() {
-  return safe(apiFetch<HomepageSettings>(`/public/stores/${STORE_SLUG}/homepage`), null);
+  const homepage = await safe(apiFetch<HomepageSettings>(`/public/stores/${STORE_SLUG}/homepage`), null);
+  return homepage ? normalizeHomepage(homepage) : null;
 }
 
 export async function getPublicMarketingSettings() {
   return safe(apiFetch<BackendMarketingSettings>(`/public/stores/${STORE_SLUG}/marketing`), null);
+}
+
+export async function getPublicStoreSettings() {
+  return safe(apiFetch<BackendStoreSettings>(`/public/stores/${STORE_SLUG}/settings`), null);
 }
 
 export async function createPublicOrder(payload: PublicOrderPayload, customerToken?: string | null) {
@@ -585,7 +614,8 @@ export async function updateAdminMarketingSettings(payload: Partial<BackendMarke
 
 export async function getAdminHomepageSettings() {
   const storeId = await getStoreId();
-  return safe(adminFetch<HomepageSettings>(`/stores/${storeId}/homepage`), null);
+  const homepage = await safe(adminFetch<HomepageSettings>(`/stores/${storeId}/homepage`), null);
+  return homepage ? normalizeHomepage(homepage) : null;
 }
 
 export async function updateAdminHomepageSettings(payload: HomepageSettings) {
@@ -762,6 +792,8 @@ function mapProduct(product: BackendProduct): Product {
     title: product.title,
     slug: product.slug,
     description: product.description,
+    deliveryDetails: product.deliveryDetails ?? undefined,
+    returnPolicy: product.returnPolicy ?? undefined,
     price: Number(product.price),
     salePrice: product.salePrice ? Number(product.salePrice) : undefined,
     images: product.images.length ? product.images : ["https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1200&q=80"],
@@ -773,6 +805,20 @@ function mapProduct(product: BackendProduct): Product {
     bestSeller: product.bestSeller,
     featured: product.featured,
     createdAt: product.createdAt,
+  };
+}
+
+function normalizeHomepage(homepage: HomepageSettings): HomepageSettings {
+  return {
+    ...homepage,
+    videoGalleryEnabled: Boolean(homepage.videoGalleryEnabled),
+    videoGalleryTitle: homepage.videoGalleryTitle ?? "Video Gallery",
+    videoGalleryDescription: homepage.videoGalleryDescription ?? "",
+    videoGalleryItems: homepage.videoGalleryItems ?? [],
+    posterGalleryEnabled: Boolean(homepage.posterGalleryEnabled),
+    posterGalleryTitle: homepage.posterGalleryTitle ?? "Poster Gallery",
+    posterGalleryDescription: homepage.posterGalleryDescription ?? "",
+    posterGalleryItems: homepage.posterGalleryItems ?? [],
   };
 }
 

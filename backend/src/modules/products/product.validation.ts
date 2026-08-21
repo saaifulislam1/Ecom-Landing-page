@@ -6,6 +6,8 @@ export const productCreateSchema = z.object({
   slug: z.string().optional(),
   description: z.string().min(1),
   shortDescription: z.string().optional(),
+  deliveryDetails: z.string().optional(),
+  returnPolicy: z.string().optional(),
   price: z.coerce.number().positive(),
   salePrice: z.coerce.number().positive().optional(),
   sku: z.string().optional(),

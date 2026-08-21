@@ -75,10 +75,13 @@ npm run db:studio
 - `GET /api/v1/public/stores/:slug/meta-product-feed.xml`
 - `GET /api/v1/public/stores/:slug/meta-product-feed.csv`
 
-## Demo Credentials
+## Demo Admin Credentials
 
-- Super admin: `admin@example.com` / `password123`
-- Store owner: `owner@example.com` / `password123`
+- Admin dashboard: `http://localhost:3000/admin/login`
+- Super admin email: `admin@example.com`
+- Super admin password: `password123`
+- Store owner email: `owner@example.com`
+- Store owner password: `password123`
 - Demo store slug: `demo-fashion-store`
 
 ## Next Integration Steps

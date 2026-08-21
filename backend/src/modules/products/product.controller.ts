@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { Request, Response } from "express";
 import { prisma } from "../../config/prisma.js";
+import { AppError } from "../../middleware/error.middleware.js";
 import { paginatedResponse, successResponse } from "../../utils/api-response.js";
 import { getPagination } from "../../utils/pagination.js";
 import { serialize } from "../../utils/serializers.js";
@@ -24,7 +25,11 @@ export async function listProducts(req: Request, res: Response) {
 }
 
 export async function createProduct(req: Request, res: Response) {
-  const product = await prisma.product.create({ data: { ...req.body, slug: req.body.slug ?? slugify(req.body.title), storeId: req.params.storeId } });
+  const slug = slugify(req.body.slug?.trim() ? req.body.slug : req.body.title);
+  const existing = await prisma.product.findUnique({ where: { storeId_slug: { storeId: req.params.storeId, slug } } });
+  if (existing) throw new AppError("A product with this slug already exists", 409);
+
+  const product = await prisma.product.create({ data: { ...req.body, slug, storeId: req.params.storeId } });
   return successResponse(res, "Product created", serialize(product), 201);
 }
 
@@ -40,7 +45,13 @@ export async function getProductBySlug(req: Request, res: Response) {
 }
 
 export async function updateProduct(req: Request, res: Response) {
-  const product = await prisma.product.update({ where: { id: req.params.productId, storeId: req.params.storeId }, data: req.body });
+  const data = { ...req.body, ...(req.body.slug ? { slug: slugify(req.body.slug) } : {}) };
+  const existing = data.slug
+    ? await prisma.product.findUnique({ where: { storeId_slug: { storeId: req.params.storeId, slug: data.slug } } })
+    : null;
+  if (existing && existing.id !== req.params.productId) throw new AppError("A product with this slug already exists", 409);
+
+  const product = await prisma.product.update({ where: { id: req.params.productId, storeId: req.params.storeId }, data });
   return successResponse(res, "Product updated", serialize(product));
 }
 

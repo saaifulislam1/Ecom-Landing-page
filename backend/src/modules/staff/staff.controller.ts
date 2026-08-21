@@ -11,20 +11,33 @@ export async function listStaff(req: Request, res: Response) {
   return successResponse(res, "Staff fetched", serialize(data));
 }
 export async function createStaff(req: Request, res: Response) {
-  const existingUser = await prisma.user.findUnique({ where: { email: req.body.email } });
-  if (existingUser) throw new AppError("A user with this email already exists", 409);
+  const email = req.body.email.trim().toLowerCase();
+  const existingUser = await prisma.user.findUnique({ where: { email }, include: { staffMembers: true } });
+  if (existingUser && existingUser.role !== UserRole.STAFF) throw new AppError("A user with this email already exists", 409);
+  if (existingUser?.staffMembers.some((member) => member.storeId === req.params.storeId)) throw new AppError("A staff member with this email already exists", 409);
+  if (existingUser?.staffMembers.length) throw new AppError("A user with this email already exists", 409);
 
   const password = await bcrypt.hash(req.body.password, 10);
   const data = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.create({
-      data: {
-        name: req.body.name,
-        email: req.body.email,
-        password,
-        role: UserRole.STAFF,
-        status: "ACTIVE",
-      },
-    });
+    const user = existingUser
+      ? await tx.user.update({
+          where: { id: existingUser.id },
+          data: {
+            name: req.body.name,
+            email,
+            password,
+            status: "ACTIVE",
+          },
+        })
+      : await tx.user.create({
+          data: {
+            name: req.body.name,
+            email,
+            password,
+            role: UserRole.STAFF,
+            status: "ACTIVE",
+          },
+        });
     return tx.staffMember.create({
       data: {
         storeId: req.params.storeId,
@@ -46,6 +59,14 @@ export async function updateStaff(req: Request, res: Response) {
   return successResponse(res, "Staff member updated", serialize(data));
 }
 export async function deleteStaff(req: Request, res: Response) {
-  await prisma.staffMember.delete({ where: { id: req.params.staffId, storeId: req.params.storeId } });
+  await prisma.$transaction(async (tx) => {
+    const staffMember = await tx.staffMember.delete({ where: { id: req.params.staffId, storeId: req.params.storeId }, include: { user: true } });
+    if (staffMember.user.role !== UserRole.STAFF) return;
+
+    const remainingStaffMemberships = await tx.staffMember.count({ where: { userId: staffMember.userId } });
+    if (remainingStaffMemberships === 0) {
+      await tx.user.delete({ where: { id: staffMember.userId } });
+    }
+  });
   return successResponse(res, "Staff member deleted", null);
 }

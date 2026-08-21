@@ -53,6 +53,9 @@ const products = [
   ["Storefront Brand Kit", "Digital Products", 3500, 2490, 999],
 ] as const;
 
+const defaultDeliveryDetails = "Inside city 1-2 days, outside city 3-5 days.";
+const defaultReturnPolicy = "Refund or exchange requests accepted within 7 days for eligible products.";
+
 async function main() {
   const password = await bcrypt.hash("password123", 12);
 
@@ -119,7 +122,10 @@ async function main() {
   for (const [title, categoryName, price, salePrice, stock] of products) {
     await prisma.product.upsert({
       where: { storeId_slug: { storeId: store.id, slug: slugify(title) } },
-      update: {},
+      update: {
+        deliveryDetails: defaultDeliveryDetails,
+        returnPolicy: defaultReturnPolicy,
+      },
       create: {
         storeId: store.id,
         categoryId: categoryRecords.get(categoryName),
@@ -127,6 +133,8 @@ async function main() {
         slug: slugify(title),
         description: `${title} demo product description.`,
         shortDescription: `${title} short description.`,
+        deliveryDetails: defaultDeliveryDetails,
+        returnPolicy: defaultReturnPolicy,
         price,
         salePrice: salePrice ?? undefined,
         stock,

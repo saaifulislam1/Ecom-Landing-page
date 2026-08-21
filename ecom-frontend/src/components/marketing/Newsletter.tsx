@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/FormControls";
 import { HomepageSettings } from "@/lib/api";
 
-export function Newsletter({ content }: { content?: HomepageSettings | null }) {
+export function Newsletter({ content, supportEmail }: { content?: HomepageSettings | null; supportEmail?: string | null }) {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
 
   function subscribe(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    window.location.href = `mailto:support@plugcommerce.test?subject=${encodeURIComponent("Newsletter subscription")}&body=${encodeURIComponent(`Please subscribe ${email} to store updates.`)}`;
+    window.location.href = `mailto:${supportEmail ?? "support@example.com"}?subject=${encodeURIComponent("Newsletter subscription")}&body=${encodeURIComponent(`Please subscribe ${email} to store updates.`)}`;
     setMessage("Opening your email app to confirm subscription.");
     setEmail("");
   }

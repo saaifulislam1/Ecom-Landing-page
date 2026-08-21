@@ -8,6 +8,18 @@ const testimonialSchema = z.object({
   image: z.string().nullish(),
 });
 
+const videoGalleryItemSchema = z.object({
+  title: z.string().optional(),
+  embedUrl: z.string().min(1),
+  posterUrl: z.string().optional(),
+});
+
+const posterGalleryItemSchema = z.object({
+  title: z.string().optional(),
+  imageUrl: z.string().min(1),
+  linkUrl: z.string().optional(),
+});
+
 export const homepageUpdateSchema = z.object({
   heroEyebrow: z.string().min(1),
   heroTitle: z.string().min(1),
@@ -35,6 +47,14 @@ export const homepageUpdateSchema = z.object({
   bestSellersEyebrow: z.string().min(1),
   bestSellersTitle: z.string().min(1),
   bestSellersDescription: z.string().min(1),
+  videoGalleryEnabled: z.boolean().default(false),
+  videoGalleryTitle: z.string().nullish(),
+  videoGalleryDescription: z.string().nullish(),
+  videoGalleryItems: z.array(videoGalleryItemSchema).default([]),
+  posterGalleryEnabled: z.boolean().default(false),
+  posterGalleryTitle: z.string().nullish(),
+  posterGalleryDescription: z.string().nullish(),
+  posterGalleryItems: z.array(posterGalleryItemSchema).default([]),
   testimonialsEyebrow: z.string().min(1),
   testimonialsTitle: z.string().min(1),
   testimonialsDescription: z.string().min(1),

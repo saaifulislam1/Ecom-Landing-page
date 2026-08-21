@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiCheckCircle } from "react-icons/fi";
 import { Input, Select, Textarea } from "@/components/ui/FormControls";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/Button";
 import { OrderSummary } from "@/components/cart/OrderSummary";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
-import { createPublicOrder, PublicOrderPayload, validatePublicCoupon } from "@/lib/api";
+import { BackendStoreSettings, createPublicOrder, getPublicStoreSettings, PublicOrderPayload, validatePublicCoupon } from "@/lib/api";
 import { createEventId, trackInitiateCheckout, trackPurchase } from "@/lib/metaPixel";
 
 export default function CheckoutPage() {
@@ -19,6 +19,18 @@ export default function CheckoutPage() {
   const [apiError, setApiError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deliveryMethod, setDeliveryMethod] = useState<PublicOrderPayload["deliveryMethod"]>("INSIDE_CITY");
+  const [storeSettings, setStoreSettings] = useState<BackendStoreSettings | null>(null);
+  const deliveryCharge = calculateDeliveryCharge(deliveryMethod, subtotal, storeSettings);
+
+  useEffect(() => {
+    let mounted = true;
+    getPublicStoreSettings().then((settings) => {
+      if (mounted) setStoreSettings(settings);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,7 +44,6 @@ export default function CheckoutPage() {
     if (Object.keys(nextErrors).length) return;
     if (!items.length) return;
 
-    const deliveryCharge = deliveryMethod === "INSIDE_CITY" ? 80 : 140;
     let discountAmount = 0;
     let couponCode: string | undefined;
 
@@ -141,7 +152,7 @@ export default function CheckoutPage() {
         <div className="lg:sticky lg:top-24 lg:self-start">
           <OrderSummary
             subtotal={subtotal}
-            deliveryCharge={deliveryMethod === "INSIDE_CITY" ? 80 : 140}
+            deliveryCharge={deliveryCharge}
             appliedCoupon={appliedCoupon}
             onCouponApplied={setAppliedCoupon}
             onCouponRemoved={removeCoupon}
@@ -150,6 +161,14 @@ export default function CheckoutPage() {
       </form>
     </div>
   );
+}
+
+function calculateDeliveryCharge(deliveryMethod: PublicOrderPayload["deliveryMethod"], subtotal: number, settings: BackendStoreSettings | null) {
+  if (!subtotal) return 0;
+  if (settings?.freeDeliveryMinAmount && subtotal >= Number(settings.freeDeliveryMinAmount)) return 0;
+  return deliveryMethod === "INSIDE_CITY"
+    ? Number(settings?.insideCityDeliveryCharge ?? 0)
+    : Number(settings?.outsideCityDeliveryCharge ?? 0);
 }
 
 function mapPaymentMethod(value: string): PublicOrderPayload["paymentMethod"] {

@@ -1,15 +1,23 @@
 import { Prisma } from "@prisma/client";
 import { Request, Response } from "express";
 import { prisma } from "../../config/prisma.js";
+import { AppError } from "../../middleware/error.middleware.js";
 import { paginatedResponse, successResponse } from "../../utils/api-response.js";
 import { getPagination } from "../../utils/pagination.js";
 import { serialize } from "../../utils/serializers.js";
 import { getValidCouponDiscount } from "../coupons/coupon.controller.js";
 import { sendPurchaseEvent } from "../marketing/meta-capi.service.js";
 
-async function nextOrderNumber() {
-  const count = await prisma.order.count();
-  return `ORD-${new Date().getFullYear()}-${String(count + 1).padStart(6, "0")}`;
+type OrderItemInput = {
+  productId: string;
+  quantity: number;
+  variant?: unknown;
+};
+
+function nextOrderNumber() {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `ORD-${new Date().getFullYear()}-${timestamp}${suffix}`;
 }
 
 export async function listOrders(req: Request, res: Response) {
@@ -29,11 +37,45 @@ export async function listOrders(req: Request, res: Response) {
 export async function createOrder(req: Request, res: Response) {
   const { items, metaEventId, ...order } = req.body;
   const data = await prisma.$transaction(async (tx) => {
+    const productIds = items.map((item: { productId?: string }) => item.productId).filter(Boolean) as string[];
+    if (productIds.length !== items.length) throw new AppError("Every order item must reference a product", 400);
+
+    const products = await tx.product.findMany({ where: { id: { in: productIds }, storeId: req.params.storeId, status: "PUBLISHED" } });
+    if (products.length !== new Set(productIds).size) throw new AppError("One or more products are unavailable", 400);
+
+    const productsById = new Map(products.map((product) => [product.id, product]));
+    const orderItems = (items as OrderItemInput[]).map((item) => {
+      const product = productsById.get(item.productId);
+      if (!product) throw new AppError("One or more products are unavailable", 400);
+      if (product.stock < item.quantity) throw new AppError(`${product.title} does not have enough stock`, 409);
+
+      const price = product.salePrice ?? product.price;
+      return {
+        productId: product.id,
+        productTitle: product.title,
+        productImage: product.images[0],
+        price,
+        quantity: item.quantity,
+        total: price.mul(item.quantity),
+        variant: item.variant,
+      };
+    });
+
+    const settings = await tx.storeSettings.findUnique({ where: { storeId: req.params.storeId } });
+    const subtotal = orderItems.reduce((sum: number, item) => sum + item.total.toNumber(), 0);
+    const configuredDeliveryCharge =
+      order.deliveryMethod === "INSIDE_CITY"
+        ? settings?.insideCityDeliveryCharge
+        : settings?.outsideCityDeliveryCharge;
+    const deliveryCharge = settings?.freeDeliveryMinAmount && subtotal >= settings.freeDeliveryMinAmount.toNumber()
+      ? 0
+      : Number(configuredDeliveryCharge ?? 0);
     const couponCode = order.couponCode ? String(order.couponCode).toUpperCase() : undefined;
     const discountAmount = couponCode
-      ? (await getValidCouponDiscount(req.params.storeId, couponCode, Number(order.subtotal), Number(order.deliveryCharge), tx)).discountAmount
+      ? (await getValidCouponDiscount(req.params.storeId, couponCode, subtotal, deliveryCharge, tx)).discountAmount
       : 0;
-    const total = Number(order.subtotal) + Number(order.deliveryCharge) - discountAmount;
+    const total = subtotal + deliveryCharge - discountAmount;
+    const customerEmail = order.customerEmail ? String(order.customerEmail).trim().toLowerCase() : undefined;
 
     const customer = req.customerAccount?.storeId === req.params.storeId
       ? await tx.customer.update({
@@ -41,7 +83,7 @@ export async function createOrder(req: Request, res: Response) {
           data: {
             name: order.customerName,
             phone: order.customerPhone,
-            email: order.customerEmail,
+            email: customerEmail,
             address: order.deliveryAddress,
             city: order.city,
           },
@@ -52,7 +94,7 @@ export async function createOrder(req: Request, res: Response) {
           where: { storeId_phone: { storeId: req.params.storeId, phone: order.customerPhone } },
           update: {
             name: order.customerName,
-            email: order.customerEmail,
+            email: customerEmail,
             address: order.deliveryAddress,
             city: order.city,
           },
@@ -60,7 +102,7 @@ export async function createOrder(req: Request, res: Response) {
             storeId: req.params.storeId,
             name: order.customerName,
             phone: order.customerPhone,
-            email: order.customerEmail,
+            email: customerEmail,
             address: order.deliveryAddress,
             city: order.city,
             tags: ["New"],
@@ -70,13 +112,16 @@ export async function createOrder(req: Request, res: Response) {
     const createdOrder = await tx.order.create({
       data: {
         ...order,
+        subtotal,
+        deliveryCharge,
         couponCode,
         discountAmount,
         total,
         storeId: req.params.storeId,
         customerId: customer?.id,
-        orderNumber: await nextOrderNumber(),
-        orderItems: { create: items },
+        customerEmail,
+        orderNumber: nextOrderNumber(),
+        orderItems: { create: orderItems },
       },
       include: { orderItems: true, customer: true },
     });
@@ -91,13 +136,12 @@ export async function createOrder(req: Request, res: Response) {
       });
     }
 
-    for (const item of items) {
-      if (item.productId) {
-        await tx.product.updateMany({
-          where: { id: item.productId, storeId: req.params.storeId },
-          data: { stock: { decrement: item.quantity } },
-        });
-      }
+    for (const item of orderItems) {
+      const stockUpdate = await tx.product.updateMany({
+        where: { id: item.productId, storeId: req.params.storeId, stock: { gte: item.quantity } },
+        data: { stock: { decrement: item.quantity } },
+      });
+      if (stockUpdate.count !== 1) throw new AppError(`${item.productTitle} does not have enough stock`, 409);
     }
 
     if (couponCode) {

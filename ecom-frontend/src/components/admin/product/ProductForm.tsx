@@ -25,6 +25,8 @@ export function ProductForm({
   const [slug, setSlug] = useState(isEdit ? product?.slug ?? "" : "");
   const [shortDescription, setShortDescription] = useState(isEdit ? product?.shortDescription ?? "" : "");
   const [description, setDescription] = useState(isEdit ? product?.description ?? "" : "");
+  const [deliveryDetails, setDeliveryDetails] = useState(isEdit ? product?.deliveryDetails ?? "" : "Inside city 1-2 days, outside city 3-5 days.");
+  const [returnPolicy, setReturnPolicy] = useState(isEdit ? product?.returnPolicy ?? "" : "Refund or exchange requests accepted within 7 days for eligible products.");
   const [categoryId, setCategoryId] = useState(isEdit ? product?.category?.id ?? "" : categories[0]?.id ?? "");
   const [sku, setSku] = useState(isEdit ? product?.sku ?? "" : "");
   const [price, setPrice] = useState(isEdit ? String(product?.price ?? "") : "");
@@ -69,6 +71,8 @@ export function ProductForm({
       ...(slug.trim() ? { slug: slug.trim() } : {}),
       description,
       ...(shortDescription.trim() ? { shortDescription: shortDescription.trim() } : {}),
+      ...(deliveryDetails.trim() ? { deliveryDetails: deliveryDetails.trim() } : {}),
+      ...(returnPolicy.trim() ? { returnPolicy: returnPolicy.trim() } : {}),
       ...(categoryId ? { categoryId } : {}),
       ...(sku.trim() ? { sku: sku.trim() } : {}),
       price: Number(price),
@@ -108,6 +112,8 @@ export function ProductForm({
           </div>
           <Field label="Short description"><FormInput value={shortDescription} onChange={(event) => setShortDescription(event.target.value)} /></Field>
           <Field label="Description"><FormTextarea value={description} onChange={(event) => setDescription(event.target.value)} required /></Field>
+          <Field label="Delivery details"><FormTextarea value={deliveryDetails} onChange={(event) => setDeliveryDetails(event.target.value)} required /></Field>
+          <Field label="Return policy"><FormTextarea value={returnPolicy} onChange={(event) => setReturnPolicy(event.target.value)} required /></Field>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Category">
               <FormSelect value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>

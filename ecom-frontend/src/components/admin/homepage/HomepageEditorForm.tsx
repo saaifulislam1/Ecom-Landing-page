@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { FiExternalLink, FiPlus, FiSave, FiTrash2, FiUpload } from "react-icons/fi";
 import { AdminButton } from "@/components/admin/ui/AdminButton";
 import { Field, FormInput, FormSelect, FormTextarea } from "@/components/admin/ui/AdminForm";
-import { BackendTheme, HomepageSettings, HomepageTestimonial, updateAdminHomepageSettings, updateAdminTheme } from "@/lib/api";
+import { BackendTheme, HomepagePosterItem, HomepageSettings, HomepageTestimonial, HomepageVideoItem, updateAdminHomepageSettings, updateAdminTheme } from "@/lib/api";
 
 const fallbackTheme: BackendTheme = {
   themeName: "Modern Blue",
@@ -58,6 +58,54 @@ export function HomepageEditorForm({ initialHomepage, initialTheme }: FormProps)
     }));
   }
 
+  function updateVideo(index: number, field: keyof HomepageVideoItem, value: string) {
+    setHomepage((current) => ({
+      ...current,
+      videoGalleryItems: current.videoGalleryItems.map((video, videoIndex) =>
+        videoIndex === index ? { ...video, [field]: value } : video,
+      ),
+    }));
+  }
+
+  function addVideo() {
+    setHomepage((current) => ({
+      ...current,
+      videoGalleryEnabled: true,
+      videoGalleryItems: [...(current.videoGalleryItems ?? []), { title: "", embedUrl: "", posterUrl: "" }],
+    }));
+  }
+
+  function removeVideo(index: number) {
+    setHomepage((current) => ({
+      ...current,
+      videoGalleryItems: current.videoGalleryItems.filter((_, videoIndex) => videoIndex !== index),
+    }));
+  }
+
+  function updatePoster(index: number, field: keyof HomepagePosterItem, value: string) {
+    setHomepage((current) => ({
+      ...current,
+      posterGalleryItems: current.posterGalleryItems.map((poster, posterIndex) =>
+        posterIndex === index ? { ...poster, [field]: value } : poster,
+      ),
+    }));
+  }
+
+  function addPoster() {
+    setHomepage((current) => ({
+      ...current,
+      posterGalleryEnabled: true,
+      posterGalleryItems: [...(current.posterGalleryItems ?? []), { title: "", imageUrl: "", linkUrl: "" }],
+    }));
+  }
+
+  function removePoster(index: number) {
+    setHomepage((current) => ({
+      ...current,
+      posterGalleryItems: current.posterGalleryItems.filter((_, posterIndex) => posterIndex !== index),
+    }));
+  }
+
   function addTestimonial() {
     setHomepage((current) => ({
       ...current,
@@ -94,6 +142,24 @@ export function HomepageEditorForm({ initialHomepage, initialTheme }: FormProps)
     try {
       const homepagePayload = {
         ...homepage,
+        videoGalleryTitle: homepage.videoGalleryTitle?.trim() || null,
+        videoGalleryDescription: homepage.videoGalleryDescription?.trim() || null,
+        videoGalleryItems: (homepage.videoGalleryItems ?? [])
+          .filter((video) => video.embedUrl.trim())
+          .map((video) => ({
+            title: video.title?.trim() || null,
+            embedUrl: video.embedUrl.trim(),
+            posterUrl: video.posterUrl?.trim() || null,
+          })),
+        posterGalleryTitle: homepage.posterGalleryTitle?.trim() || null,
+        posterGalleryDescription: homepage.posterGalleryDescription?.trim() || null,
+        posterGalleryItems: (homepage.posterGalleryItems ?? [])
+          .filter((poster) => poster.imageUrl.trim())
+          .map((poster) => ({
+            title: poster.title?.trim() || null,
+            imageUrl: poster.imageUrl.trim(),
+            linkUrl: poster.linkUrl?.trim() || null,
+          })),
         testimonials: homepage.testimonials
           .filter((testimonial) => testimonial.name.trim() && testimonial.quote.trim())
           .map((testimonial) => ({
@@ -183,6 +249,71 @@ export function HomepageEditorForm({ initialHomepage, initialTheme }: FormProps)
           <div className="grid gap-4 md:grid-cols-2">
             <Field label="Button label"><FormInput value={homepage.promoButtonLabel} onChange={(event) => updateHomepageField("promoButtonLabel", event.target.value)} required /></Field>
             <Field label="Button link"><FormInput value={homepage.promoButtonHref} onChange={(event) => updateHomepageField("promoButtonHref", event.target.value)} required /></Field>
+          </div>
+        </Panel>
+
+        <Panel title="Optional video gallery">
+          <Toggle
+            label="Show video gallery on landing page"
+            checked={homepage.videoGalleryEnabled}
+            onChange={(value) => setHomepage((current) => ({ ...current, videoGalleryEnabled: value }))}
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Section title"><FormInput value={homepage.videoGalleryTitle ?? ""} onChange={(event) => updateHomepageField("videoGalleryTitle", event.target.value)} placeholder="Video Gallery" /></Field>
+            <Field label="Section description"><FormInput value={homepage.videoGalleryDescription ?? ""} onChange={(event) => updateHomepageField("videoGalleryDescription", event.target.value)} /></Field>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-t border-[#E2E8F0] pt-4">
+            <p className="text-sm text-[#64748B]">Add YouTube watch links, youtu.be links, or direct embed URLs. The storefront shows up to four videos.</p>
+            <AdminButton type="button" variant="secondary" onClick={addVideo}><FiPlus /> Add video</AdminButton>
+          </div>
+          <div className="space-y-4">
+            {(homepage.videoGalleryItems ?? []).map((video, index) => (
+              <article key={index} className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h3 className="font-bold text-[#0F172A]">Video {index + 1}</h3>
+                  <AdminButton type="button" variant="outline" onClick={() => removeVideo(index)} className="text-red-600 hover:border-red-200 hover:bg-red-50"><FiTrash2 /> Remove</AdminButton>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Title"><FormInput value={video.title ?? ""} onChange={(event) => updateVideo(index, "title", event.target.value)} /></Field>
+                  <Field label="Video URL"><FormInput value={video.embedUrl} onChange={(event) => updateVideo(index, "embedUrl", event.target.value)} placeholder="https://www.youtube.com/watch?v=..." required /></Field>
+                  <Field label="Poster URL optional"><FormInput value={video.posterUrl ?? ""} onChange={(event) => updateVideo(index, "posterUrl", event.target.value)} placeholder="https://..." /></Field>
+                </div>
+              </article>
+            ))}
+          </div>
+        </Panel>
+
+        <Panel title="Optional poster gallery">
+          <Toggle
+            label="Show poster gallery on landing page"
+            checked={homepage.posterGalleryEnabled}
+            onChange={(value) => setHomepage((current) => ({ ...current, posterGalleryEnabled: value }))}
+          />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="Section title"><FormInput value={homepage.posterGalleryTitle ?? ""} onChange={(event) => updateHomepageField("posterGalleryTitle", event.target.value)} placeholder="Poster Gallery" /></Field>
+            <Field label="Section description"><FormInput value={homepage.posterGalleryDescription ?? ""} onChange={(event) => updateHomepageField("posterGalleryDescription", event.target.value)} /></Field>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-t border-[#E2E8F0] pt-4">
+            <p className="text-sm text-[#64748B]">Use campaign posters, offer artwork, brand images, or delivery banners. Links are optional.</p>
+            <AdminButton type="button" variant="secondary" onClick={addPoster}><FiPlus /> Add poster</AdminButton>
+          </div>
+          <div className="space-y-4">
+            {(homepage.posterGalleryItems ?? []).map((poster, index) => (
+              <article key={index} className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {poster.imageUrl ? <img src={poster.imageUrl} alt={poster.title || "Poster preview"} className="h-12 w-16 rounded-md object-cover" /> : null}
+                    <h3 className="font-bold text-[#0F172A]">Poster {index + 1}</h3>
+                  </div>
+                  <AdminButton type="button" variant="outline" onClick={() => removePoster(index)} className="text-red-600 hover:border-red-200 hover:bg-red-50"><FiTrash2 /> Remove</AdminButton>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field label="Title"><FormInput value={poster.title ?? ""} onChange={(event) => updatePoster(index, "title", event.target.value)} /></Field>
+                  <Field label="Image URL"><FormInput value={poster.imageUrl} onChange={(event) => updatePoster(index, "imageUrl", event.target.value)} placeholder="https://..." required /></Field>
+                  <Field label="Link URL optional"><FormInput value={poster.linkUrl ?? ""} onChange={(event) => updatePoster(index, "linkUrl", event.target.value)} placeholder="/products or https://..." /></Field>
+                </div>
+              </article>
+            ))}
           </div>
         </Panel>
 
@@ -348,6 +479,18 @@ function SectionFields({
         <Field label="Description"><FormTextarea value={description} onChange={(event) => onDescription(event.target.value)} required /></Field>
       </div>
     </div>
+  );
+}
+
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <label className="flex min-h-10 cursor-pointer items-center justify-between gap-3 rounded-md border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-semibold text-[#0F172A]">
+      <span>{label}</span>
+      <span className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition ${checked ? "bg-[#2563EB]" : "bg-[#CBD5E1]"}`}>
+        <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition ${checked ? "left-5" : "left-0.5"}`} />
+      </span>
+      <input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="sr-only" />
+    </label>
   );
 }
 

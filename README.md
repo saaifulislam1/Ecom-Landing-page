@@ -70,13 +70,16 @@ http://localhost:5001/api/v1
 
 So the backend must be running for pages that load store, theme, product, customer, or order data.
 
-## Demo Login
+## Demo Admin Login
 
 Use these seeded credentials after running `npm run db:seed` in the backend:
 
 ```text
-Super admin: admin@example.com / password123
-Store owner: owner@example.com / password123
+Admin dashboard: http://localhost:3000/admin/login
+Super admin email: admin@example.com
+Super admin password: password123
+Store owner email: owner@example.com
+Store owner password: password123
 Demo store slug: demo-fashion-store
 ```
 
